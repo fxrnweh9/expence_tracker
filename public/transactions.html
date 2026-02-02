@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Transactions</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h2>Transactions</h2>
+        <span class="badge">CRUD + Filters</span>
+      </div>
+
+      <div class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/categories.html">Categories</a>
+        <a href="/budgets.html">Budgets</a>
+        <button class="btn secondary" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Add transaction</h3>
+      <div class="grid">
+        <div class="col-4">
+          <label>Category</label>
+          <select id="category"></select>
+        </div>
+
+        <div class="col-3">
+          <label>Type</label>
+          <select id="type">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+
+        <div class="col-3">
+          <label>Amount</label>
+          <input id="amount" type="number" placeholder="2500" />
+        </div>
+
+        <div class="col-2">
+          <label>Date</label>
+          <input id="date" type="date" />
+        </div>
+
+        <div class="col-12">
+          <label>Note (optional)</label>
+          <input id="note" placeholder="Lunch / Taxi / Salary..." />
+        </div>
+
+        <div class="col-12">
+          <button class="btn success" id="btnAdd" style="width:100%;">Add</button>
+          <p class="small" id="msg"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Filters</h3>
+      <div class="grid">
+        <div class="col-4">
+          <label>Start</label>
+          <input id="fStart" type="date" />
+        </div>
+        <div class="col-4">
+          <label>End</label>
+          <input id="fEnd" type="date" />
+        </div>
+        <div class="col-4">
+          <label>Type</label>
+          <select id="fType">
+            <option value="">All</option>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+
+        <div class="col-12">
+          <button class="btn" id="btnFilter" style="width:100%;">Apply</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>List</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Note</th>
+            <th style="width:120px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <p class="small" id="empty"></p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if (!getToken()) window.location.href = "/login.html";
+
+    const today = new Date().toISOString().slice(0,10);
+    date.value = today;
+
+    let catMap = new Map();
+
+    async function loadCategories() {
+      const cats = await api("/categories");
+      category.innerHTML = "";
+      catMap = new Map(cats.map(c => [c._id, c.name]));
+
+      cats.forEach(c => {
+        const o = document.createElement("option");
+        o.value = c._id;
+        o.textContent = c.name;
+        category.appendChild(o);
+      });
+    }
+
+    function buildQuery() {
+      const q = [];
+      if (fStart.value) q.push("start=" + fStart.value);
+      if (fEnd.value) q.push("end=" + fEnd.value);
+      if (fType.value) q.push("type=" + fType.value);
+      return q.length ? "?" + q.join("&") : "";
+    }
+
+    async function loadTransactions() {
+      tbody.innerHTML = "";
+      empty.textContent = "";
+
+      const qs = buildQuery();
+      const data = await api("/transactions" + qs);
+
+      if (data.length === 0) {
+        empty.textContent = "No transactions found.";
+        return;
+      }
+
+      data.forEach(t => {
+        const tr = document.createElement("tr");
+
+        const d = new Date(t.date).toISOString().slice(0,10);
+
+        const tdDate = document.createElement("td"); tdDate.textContent = d;
+        const tdType = document.createElement("td");
+        tdType.innerHTML = `<span class="pill">${t.type}</span>`;
+
+        const tdCat = document.createElement("td");
+        tdCat.textContent = catMap.get(String(t.categoryId)) || "Unknown";
+
+        const tdAmount = document.createElement("td");
+        tdAmount.textContent = t.amount;
+
+        const tdNote = document.createElement("td");
+        tdNote.textContent = t.note || "";
+
+        const tdAct = document.createElement("td");
+        const btnDel = document.createElement("button");
+        btnDel.className = "btn danger";
+        btnDel.textContent = "Delete";
+        btnDel.onclick = () => del(t._id);
+        tdAct.appendChild(btnDel);
+
+        tr.append(tdDate, tdType, tdCat, tdAmount, tdNote, tdAct);
+        tbody.appendChild(tr);
+      });
+    }
+
+    btnAdd.onclick = async () => {
+      msg.textContent = "";
+      try {
+        await api("/transactions", {
+          method: "POST",
+          body: {
+            categoryId: category.value,
+            type: type.value,
+            amount: Number(amount.value),
+            date: date.value,
+            note: note.value
+          }
+        });
+
+        amount.value = "";
+        note.value = "";
+        await loadTransactions();
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    };
+
+    btnFilter.onclick = loadTransactions;
+
+    async function del(id) {
+      if (!confirm("Delete transaction?")) return;
+      try {
+        await api("/transactions/" + id, { method: "DELETE" });
+        await loadTransactions();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    (async function init(){
+      await loadCategories();
+      await loadTransactions();
+    })();
+  </script>
+</body>
+</html>

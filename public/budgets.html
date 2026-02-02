@@ -1,0 +1,182 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Budgets</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h2>Budgets</h2>
+        <span class="badge">Embedded + Advanced Updates</span>
+      </div>
+
+      <div class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/categories.html">Categories</a>
+        <a href="/transactions.html">Transactions</a>
+        <button class="btn secondary" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Select month</h3>
+      <div class="grid">
+        <div class="col-6">
+          <label>Month</label>
+          <input id="month" type="month" />
+        </div>
+        <div class="col-6">
+          <button class="btn" id="btnLoad" style="width:100%;">Load</button>
+        </div>
+        <div class="col-12">
+          <p class="small" id="msg"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Add / Update limit</h3>
+      <div class="grid">
+        <div class="col-6">
+          <label>Category</label>
+          <select id="category"></select>
+        </div>
+        <div class="col-3">
+          <label>Limit</label>
+          <input id="limit" type="number" placeholder="30000" />
+        </div>
+        <div class="col-3">
+          <button class="btn success" id="btnAdd" style="width:100%;">Add</button>
+          <div style="height:8px;"></div>
+          <button class="btn warn" id="btnUpdate" style="width:100%;">Update</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Limits</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Limit</th>
+            <th style="width:140px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <p class="small" id="empty"></p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if (!getToken()) window.location.href = "/login.html";
+
+    const monthEl = document.getElementById("month");
+    const categoryEl = document.getElementById("category");
+    const limitEl = document.getElementById("limit");
+    const tbody = document.getElementById("tbody");
+    const empty = document.getElementById("empty");
+
+    function ymToday() {
+      return new Date().toISOString().slice(0,7);
+    }
+    monthEl.value = ymToday();
+
+    let catMap = new Map();
+
+    async function loadCategories() {
+      const cats = await api("/categories");
+      categoryEl.innerHTML = "";
+      catMap = new Map(cats.map(c => [c._id, c.name]));
+
+      cats.forEach(c => {
+        const o = document.createElement("option");
+        o.value = c._id;
+        o.textContent = c.name;
+        categoryEl.appendChild(o);
+      });
+    }
+
+    let currentBudget = null;
+
+    async function loadBudget() {
+      msg.textContent = "";
+      tbody.innerHTML = "";
+      empty.textContent = "";
+
+      try {
+        const ym = monthEl.value;
+        currentBudget = await api("/budgets/" + ym);
+
+        if (!currentBudget.limits || currentBudget.limits.length === 0) {
+          empty.textContent = "No limits yet.";
+          return;
+        }
+
+        currentBudget.limits.forEach(x => {
+          const tr = document.createElement("tr");
+
+          const tdCat = document.createElement("td");
+          tdCat.textContent = catMap.get(String(x.categoryId)) || "Unknown";
+
+          const tdLimit = document.createElement("td");
+          tdLimit.textContent = x.limit;
+
+          const tdAct = document.createElement("td");
+
+          const btnRemove = document.createElement("button");
+          btnRemove.className = "btn danger";
+          btnRemove.textContent = "Remove";
+          btnRemove.onclick = () => removeLimit(ym, x.categoryId);
+
+          tdAct.appendChild(btnRemove);
+
+          tr.append(tdCat, tdLimit, tdAct);
+          tbody.appendChild(tr);
+        });
+
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    }
+
+    async function addLimit() {
+      const ym = monthEl.value;
+      await api(`/budgets/${ym}/limits`, {
+        method: "POST",
+        body: { categoryId: categoryEl.value, limit: Number(limitEl.value) }
+      });
+      await loadBudget();
+    }
+
+    async function updateLimit() {
+      const ym = monthEl.value;
+      await api(`/budgets/${ym}/limits`, {
+        method: "PATCH",
+        body: { categoryId: categoryEl.value, limit: Number(limitEl.value) }
+      });
+      await loadBudget();
+    }
+
+    async function removeLimit(ym, categoryId) {
+      if (!confirm("Remove limit?")) return;
+      await api(`/budgets/${ym}/limits/${categoryId}`, { method: "DELETE" });
+      await loadBudget();
+    }
+
+    btnLoad.onclick = loadBudget;
+    btnAdd.onclick = () => addLimit().catch(e => msg.textContent = e.message);
+    btnUpdate.onclick = () => updateLimit().catch(e => msg.textContent = e.message);
+
+    (async function init(){
+      await loadCategories();
+      await loadBudget();
+    })();
+  </script>
+</body>
+</html>

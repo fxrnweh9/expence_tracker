@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Categories</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h2>Categories</h2>
+        <span class="badge">CRUD</span>
+      </div>
+
+      <div class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/transactions.html">Transactions</a>
+        <a href="/budgets.html">Budgets</a>
+        <button class="btn secondary" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Add category</h3>
+      <div class="grid">
+        <div class="col-8">
+          <label>Name</label>
+          <input id="catName" placeholder="Food / Transport / Study" />
+        </div>
+        <div class="col-4">
+          <button class="btn success" id="btnAdd" style="width:100%;">Add</button>
+        </div>
+        <div class="col-12">
+          <p class="small" id="msg"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Your categories</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th style="width:220px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <p class="small" id="empty"></p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if (!getToken()) window.location.href = "/login.html";
+
+    const catNameEl = document.getElementById("catName");
+    const tbody = document.getElementById("tbody");
+    const empty = document.getElementById("empty");
+
+    async function load() {
+      tbody.innerHTML = "";
+      empty.textContent = "";
+
+      try {
+        const data = await api("/categories");
+        if (data.length === 0) {
+          empty.textContent = "No categories yet. Add one above.";
+          return;
+        }
+
+        data.forEach(c => {
+          const tr = document.createElement("tr");
+
+          const tdName = document.createElement("td");
+          tdName.textContent = c.name;
+
+          const tdActions = document.createElement("td");
+
+          const btnEdit = document.createElement("button");
+          btnEdit.className = "btn secondary";
+          btnEdit.textContent = "Edit";
+          btnEdit.onclick = () => edit(c._id, c.name);
+
+          const btnDel = document.createElement("button");
+          btnDel.className = "btn danger";
+          btnDel.style.marginLeft = "8px";
+          btnDel.textContent = "Delete";
+          btnDel.onclick = () => del(c._id);
+
+          tdActions.append(btnEdit, btnDel);
+
+          tr.append(tdName, tdActions);
+          tbody.appendChild(tr);
+        });
+
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    }
+
+    btnAdd.onclick = async () => {
+      msg.textContent = "";
+      try {
+        await api("/categories", { method: "POST", body: { name: catNameEl.value } });
+        catNameEl.value = "";
+        load();
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    };
+
+    async function edit(id, oldName) {
+      const n = prompt("New name:", oldName);
+      if (!n) return;
+
+      try {
+        await api("/categories/" + id, { method: "PATCH", body: { name: n } });
+        load();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function del(id) {
+      if (!confirm("Delete category?")) return;
+      try {
+        await api("/categories/" + id, { method: "DELETE" });
+        load();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

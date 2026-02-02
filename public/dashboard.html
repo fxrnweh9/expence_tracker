@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h2>Dashboard</h2>
+        <span class="badge">Expense Tracker</span>
+      </div>
+
+      <div class="nav">
+        <a href="/categories.html">Categories</a>
+        <a href="/transactions.html">Transactions</a>
+        <a href="/budgets.html">Budgets</a>
+        <button class="btn secondary" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Report: expenses by category</h3>
+
+      <div class="grid">
+        <div class="col-4">
+          <label>Start</label>
+          <input id="start" type="date" />
+        </div>
+
+        <div class="col-4">
+          <label>End</label>
+          <input id="end" type="date" />
+        </div>
+
+        <div class="col-4">
+          <button class="btn" id="btnReport" style="width:100%;">Load</button>
+        </div>
+
+        <div class="col-12">
+          <pre id="out"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Report: budget vs spent (month)</h3>
+
+      <div class="grid">
+        <div class="col-6">
+          <label>Month</label>
+          <input id="m" type="month" />
+        </div>
+
+        <div class="col-6">
+          <button class="btn success" id="btnBvs" style="width:100%;">Load</button>
+        </div>
+
+        <div class="col-12">
+          <pre id="out2"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if (!localStorage.getItem("token")) window.location.href = "/login.html";
+
+    // Report 1 default: last 30 days
+    const today = new Date();
+    const endDef = today.toISOString().slice(0, 10);
+    const startDef = new Date(today.getTime() - 29 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+
+    const startEl = document.getElementById("start");
+    const endEl = document.getElementById("end");
+    const btnReportEl = document.getElementById("btnReport");
+    const outEl = document.getElementById("out");
+
+    startEl.value = startDef;
+    endEl.value = endDef;
+
+    btnReportEl.onclick = async () => {
+      outEl.textContent = "Loading...";
+      try {
+        const r = await api(`/reports/by-category?start=${startEl.value}&end=${endEl.value}&type=expense`);
+        outEl.textContent = JSON.stringify(r.data, null, 2);
+      } catch (e) {
+        outEl.textContent = e.message;
+      }
+    };
+
+    // Report 2 default: current month
+    const mEl = document.getElementById("m");
+    const btnBvsEl = document.getElementById("btnBvs");
+    const out2El = document.getElementById("out2");
+
+    mEl.value = new Date().toISOString().slice(0, 7);
+
+    btnBvsEl.onclick = async () => {
+      out2El.textContent = "Loading...";
+      try {
+        const r = await api(`/reports/budget-vs-spent?month=${mEl.value}`);
+        out2El.textContent = JSON.stringify(r.data, null, 2);
+      } catch (e) {
+        out2El.textContent = e.message;
+      }
+    };
+  </script>
+</body>
+</html>

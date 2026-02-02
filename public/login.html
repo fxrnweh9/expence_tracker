@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Login</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h2>Login</h2>
+        <span class="badge">Expense Tracker</span>
+      </div>
+
+      <div class="nav">
+        <a href="/register.html">Register</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Login</h3>
+
+      <div class="grid">
+        <div class="col-12">
+          <label>Email</label>
+          <input id="email" placeholder="test@mail.com" />
+        </div>
+
+        <div class="col-12">
+          <label>Password</label>
+          <input id="password" type="password" placeholder="your password" />
+        </div>
+
+        <div class="col-12">
+          <button class="btn" id="btnLog" style="width:100%;">Login</button>
+          <p class="small" id="msg"></p>
+        </div>
+
+        <div class="col-12">
+          <span class="small">No account?</span>
+          <a href="/register.html">Create one</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if (localStorage.getItem("token")) window.location.href = "/dashboard.html";
+
+    btnLog.onclick = async () => {
+      msg.textContent = "";
+      try {
+        const r = await api("/auth/login", {
+          method: "POST",
+          body: { email: email.value, password: password.value }
+        });
+        localStorage.setItem("token", r.token);
+        window.location.href = "/dashboard.html";
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    };
+  </script>
+</body>
+</html>

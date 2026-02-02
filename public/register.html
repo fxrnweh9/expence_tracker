@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Register</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <h2>Create account</h2>
+        <span class="badge">Register</span>
+      </div>
+
+      <div class="nav">
+        <a href="/login.html">Login</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Register</h3>
+
+      <div class="grid">
+        <div class="col-12">
+          <label>Email</label>
+          <input id="email" placeholder="test@mail.com" />
+        </div>
+
+        <div class="col-12">
+          <label>Password</label>
+          <input id="password" type="password" placeholder="min 6 chars" />
+        </div>
+
+        <div class="col-12">
+          <button class="btn success" id="btnReg" style="width:100%;">Create account</button>
+          <p class="small" id="msg"></p>
+        </div>
+
+        <div class="col-12">
+          <span class="small">Already have an account?</span>
+          <a href="/login.html">Go to Login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if (localStorage.getItem("token")) window.location.href = "/dashboard.html";
+
+    btnReg.onclick = async () => {
+      msg.textContent = "";
+      try {
+        await api("/auth/register", {
+          method: "POST",
+          body: { email: email.value, password: password.value }
+        });
+        msg.textContent = "Registered. Now you can login.";
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    };
+  </script>
+</body>
+</html>
