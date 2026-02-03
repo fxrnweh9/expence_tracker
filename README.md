@@ -133,11 +133,11 @@ Open:
 
 ## Team Contribution
 
-Student 1:
+Olzhas:
 
 * Backend, MongoDB, Aggregation, API
 
-Student 2:
+Shugyla:
 
 * Frontend, UI, Integration, Testing
 
